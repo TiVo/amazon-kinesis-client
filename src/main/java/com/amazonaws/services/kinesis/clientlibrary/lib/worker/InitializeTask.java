@@ -19,6 +19,7 @@ import org.apache.commons.logging.LogFactory;
 
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.ICheckpoint;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessor;
+import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessor2;
 
 /**
  * Task for initializing shard position and invoking the RecordProcessor initialize() API.
@@ -71,7 +72,11 @@ class InitializeTask implements ITask {
             recordProcessorCheckpointer.setInitialCheckpointValue(initialCheckpoint);
             try {
                 LOG.debug("Calling the record processor initialize().");
-                recordProcessor.initialize(shardInfo.getShardId());
+                if (recordProcessor instanceof IRecordProcessor2) {
+                    ((IRecordProcessor2)recordProcessor).initialize(shardInfo.getShardId(), initialCheckpoint);
+                } else {
+                    recordProcessor.initialize(shardInfo.getShardId());
+                }
                 LOG.debug("Record processor initialize() completed.");
             } catch (Exception e) {
                 applicationException = true;
