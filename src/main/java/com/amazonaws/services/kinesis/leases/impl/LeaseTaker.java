@@ -138,7 +138,8 @@ public class LeaseTaker<T extends Lease> implements ILeaseTaker<T> {
             try {
                 for (int i = 1; i <= TAKE_RETRIES; i++) {
                     try {
-                        if (leaseManager.takeLease(lease, workerIdentifier)) {
+                        boolean isExpired = lease.isExpired(leaseDurationNanos, lastScanTimeNanos);
+                        if (leaseManager.takeLease(lease, workerIdentifier, isExpired)) {
                             lease.setLastCounterIncrementNanos(System.nanoTime());
                             takenLeases.put(leaseKey, lease);
                         } else {
@@ -283,7 +284,6 @@ public class LeaseTaker<T extends Lease> implements ILeaseTaker<T> {
     /**
      * Compute the number of leases I should try to take based on the state of the system.
      * 
-     * @param allLeases map of shardId to lease containing all leases
      * @param expiredLeases list of leases we determined to be expired
      * @return set of leases to take.
      */

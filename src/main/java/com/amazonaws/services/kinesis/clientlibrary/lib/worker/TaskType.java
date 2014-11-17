@@ -23,6 +23,10 @@ enum TaskType {
      */
     BLOCK_ON_PARENT_SHARDS,
     /**
+     * Delays until the timeout period on stolen shards expires
+     */
+    BLOCK_ON_STOLEN_SHARD,
+    /**
      * Initialization of RecordProcessor (and Amazon Kinesis Client Library internal state for a shard).
      */
     INITIALIZE,
@@ -37,5 +41,9 @@ enum TaskType {
     /**
      * Sync leases/activities corresponding to Kinesis shards.
      */
-    SHARDSYNC;
+    SHARDSYNC,
+    /**
+     * Catch up a shard from external storage
+     */
+    CATCHUP,
 }

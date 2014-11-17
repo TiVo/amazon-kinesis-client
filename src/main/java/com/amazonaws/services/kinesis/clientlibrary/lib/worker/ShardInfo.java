@@ -28,19 +28,22 @@ class ShardInfo {
     private final String concurrencyToken;
     // Sorted list of parent shardIds.
     private final List<String> parentShardIds;
+    private boolean stolen;
 
     /**
      * @param shardId Kinesis shardId
      * @param concurrencyToken Used to differentiate between lost and reclaimed leases
      * @param parentShardIds Parent shards of the shard identified by Kinesis shardId
+     * @param stolen true iff the shard was stolen from a non expired lease holder
      */
-    public ShardInfo(String shardId, String concurrencyToken, Collection<String> parentShardIds) {
+    public ShardInfo(String shardId, String concurrencyToken, Collection<String> parentShardIds, boolean stolen) {
         this.shardId = shardId;
         this.concurrencyToken = concurrencyToken;
         this.parentShardIds = new LinkedList<String>();
         if (parentShardIds != null) {
             this.parentShardIds.addAll(parentShardIds);
         }
+        this.stolen = stolen;
         // ShardInfo stores parent shard Ids in canonical order in the parentShardIds list.
         // This makes it easy to check for equality in ShardInfo.equals method.
         Collections.sort(this.parentShardIds);
@@ -68,6 +71,13 @@ class ShardInfo {
     }
 
     /**
+     * @return true iff this shard was stolen from another non expired lease holder
+     */
+    protected boolean wasStolen() {
+        return stolen;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -77,6 +87,7 @@ class ShardInfo {
         result = prime * result + ((concurrencyToken == null) ? 0 : concurrencyToken.hashCode());
         result = prime * result + ((parentShardIds == null) ? 0 : parentShardIds.hashCode());
         result = prime * result + ((shardId == null) ? 0 : shardId.hashCode());
+        result = prime * result + (stolen ? 1 : 0);
         return result;
     }
 
@@ -126,6 +137,9 @@ class ShardInfo {
         } else if (!shardId.equals(other.shardId)) {
             return false;
         }
+        if (stolen != other.stolen) {
+            return false;
+        }
         return true;
     }
 
@@ -135,7 +149,7 @@ class ShardInfo {
     @Override
     public String toString() {
         return "ShardInfo [shardId=" + shardId + ", concurrencyToken=" + concurrencyToken + ", parentShardIds="
-                + parentShardIds + "]";
+                + parentShardIds + ", stolen=" + stolen + "]";
     }
 
 }

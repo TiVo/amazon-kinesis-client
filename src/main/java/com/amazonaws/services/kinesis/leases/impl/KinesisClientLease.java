@@ -26,6 +26,7 @@ public class KinesisClientLease extends Lease {
     private String checkpoint;
     private Long ownerSwitchesSinceCheckpoint = 0L;
     private Set<String> parentShardIds = new HashSet<String>();
+    private boolean stolen;
 
     public KinesisClientLease() {
 
@@ -36,6 +37,7 @@ public class KinesisClientLease extends Lease {
         this.checkpoint = other.getCheckpoint();
         this.ownerSwitchesSinceCheckpoint = other.getOwnerSwitchesSinceCheckpoint();
         this.parentShardIds.addAll(other.getParentShardIds());
+        this.stolen = other.wasStolen();
     }
 
     /**
@@ -77,6 +79,13 @@ public class KinesisClientLease extends Lease {
     }
 
     /**
+     * @return true iff the lease was stolen from another non expired lease holder
+     */
+    public boolean wasStolen() {
+        return stolen;
+    }
+
+    /**
      * Sets checkpoint.
      * 
      * @param checkpoint may not be null
@@ -109,6 +118,14 @@ public class KinesisClientLease extends Lease {
         this.parentShardIds.clear();
         this.parentShardIds.addAll(parentShardIds);
     }
+
+    /**
+     * Marks the lease as stolen from another non expired lease holder
+     * @param stolen true iff stolen
+     */
+    public void markStolen(boolean stolen) {
+        this.stolen = stolen;
+    }
     
     private void verifyNotNull(Object object, String message) {
         if (object == null) {
@@ -124,6 +141,7 @@ public class KinesisClientLease extends Lease {
         result =
                 prime * result + ((ownerSwitchesSinceCheckpoint == null) ? 0 : ownerSwitchesSinceCheckpoint.hashCode());
         result = prime * result + ((parentShardIds == null) ? 0 : parentShardIds.hashCode());
+        result = prime * result + (stolen ? 1 : 0);
         return result;
     }
 
@@ -151,6 +169,9 @@ public class KinesisClientLease extends Lease {
                 return false;
         } else if (!parentShardIds.equals(other.parentShardIds))
             return false;
+        if (stolen != other.wasStolen()) {
+            return false;
+        }
         return true;
     }
 

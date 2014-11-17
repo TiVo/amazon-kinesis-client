@@ -34,6 +34,13 @@ public class KinesisClientLibConfiguration {
     public static final long DEFAULT_FAILOVER_TIME_MILLIS = 10000L;
 
     /**
+     * Delay time before beginning to process stolen leases.  Gives a grace period for other workers to notice and
+     * shut down their record processors cleanly rather than having multiple record processors running simultaneously
+     * on the same shard.
+     */
+    public static final long DEFAULT_LEASE_THEFT_DELAY_MILLIS = 0;
+
+    /**
      * Max records to fetch from Kinesis in a single GetRecords call.
      */
     public static final int DEFAULT_MAX_RECORDS = 10000;
@@ -101,6 +108,7 @@ public class KinesisClientLibConfiguration {
     private AWSCredentialsProvider dynamoDBCredentialsProvider;
     private AWSCredentialsProvider cloudWatchCredentialsProvider;
     private long failoverTimeMillis;
+    private long leaseTheftDelayMillis;
     private String workerIdentifier;
     private long shardSyncIntervalMillis;
     private int maxRecords;
@@ -154,7 +162,8 @@ public class KinesisClientLibConfiguration {
             AWSCredentialsProvider cloudWatchCredentialsProvider,
             String workerId) {
         this(applicationName, streamName, null, InitialPositionInStream.LATEST, kinesisCredentialsProvider,
-                dynamoDBCredentialsProvider, cloudWatchCredentialsProvider, DEFAULT_FAILOVER_TIME_MILLIS, workerId,
+                dynamoDBCredentialsProvider, cloudWatchCredentialsProvider, DEFAULT_FAILOVER_TIME_MILLIS,
+                DEFAULT_LEASE_THEFT_DELAY_MILLIS, workerId,
                 DEFAULT_MAX_RECORDS, DEFAULT_IDLETIME_BETWEEN_READS_MILLIS,
                 DEFAULT_DONT_CALL_PROCESS_RECORDS_FOR_EMPTY_RECORD_LIST, DEFAULT_PARENT_SHARD_POLL_INTERVAL_MILLIS,
                 DEFAULT_SHARD_SYNC_INTERVAL_MILLIS, DEFAULT_CLEANUP_LEASES_UPON_SHARDS_COMPLETION,
@@ -176,6 +185,7 @@ public class KinesisClientLibConfiguration {
      * @param dynamoDBCredentialsProvider Provides credentials used to access DynamoDB
      * @param cloudWatchCredentialsProvider Provides credentials used to access CloudWatch
      * @param failoverTimeMillis Lease duration (leases not renewed within this period will be claimed by others)
+     * @param leaseTheftDelayMillis Amount of time to wait after stealing a lease before processing records
      * @param workerId Used to distinguish different workers/processes of a Kinesis application
      * @param maxRecords Max records to read per Kinesis getRecords() call
      * @param idleTimeBetweenReadsInMillis Idle time between calls to fetch data from Kinesis
@@ -207,6 +217,7 @@ public class KinesisClientLibConfiguration {
             AWSCredentialsProvider dynamoDBCredentialsProvider,
             AWSCredentialsProvider cloudWatchCredentialsProvider,
             long failoverTimeMillis,
+            long leaseTheftDelayMillis,
             String workerId,
             int maxRecords,
             long idleTimeBetweenReadsInMillis,
@@ -240,6 +251,7 @@ public class KinesisClientLibConfiguration {
         this.dynamoDBCredentialsProvider = dynamoDBCredentialsProvider;
         this.cloudWatchCredentialsProvider = cloudWatchCredentialsProvider;
         this.failoverTimeMillis = failoverTimeMillis;
+        this.leaseTheftDelayMillis = leaseTheftDelayMillis;
         this.maxRecords = maxRecords;
         this.idleTimeBetweenReadsInMillis = idleTimeBetweenReadsInMillis;
         this.callProcessRecordsEvenForEmptyRecordList = callProcessRecordsEvenForEmptyRecordList;
@@ -298,6 +310,13 @@ public class KinesisClientLibConfiguration {
      */
     public long getFailoverTimeMillis() {
         return failoverTimeMillis;
+    }
+
+    /**
+     * @return The time to wait after stealing a lease before processing records from the associated shard
+     */
+    public long getLeaseTheftDelayMillis() {
+        return leaseTheftDelayMillis;
     }
 
     /**
@@ -483,6 +502,16 @@ public class KinesisClientLibConfiguration {
     public KinesisClientLibConfiguration withFailoverTimeMillis(long failoverTimeMillis) {
         checkIsValuePositive("FailoverTimeMillis", failoverTimeMillis);
         this.failoverTimeMillis = failoverTimeMillis;
+        return this;
+    }
+
+    /**
+     * @param leaseTheftDelayMillis How long to wait after stealing a lease before processing events from the
+     *                              associated shard
+     * @return KinesisClientLibConfiguration
+     */
+    public KinesisClientLibConfiguration withLeaseTheftDelayMillis(long leaseTheftDelayMillis) {
+        this.leaseTheftDelayMillis = leaseTheftDelayMillis;
         return this;
     }
 

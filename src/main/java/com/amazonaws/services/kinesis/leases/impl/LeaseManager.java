@@ -379,7 +379,7 @@ public class LeaseManager<T extends Lease> implements ILeaseManager<T> {
      * {@inheritDoc}
      */
     @Override
-    public boolean takeLease(T lease, String owner)
+    public boolean takeLease(T lease, String owner, boolean isExpired)
         throws DependencyException, InvalidStateException, ProvisionedThroughputException {
         verifyNotNull(lease, "lease cannot be null");
         verifyNotNull(owner, "owner cannot be null");

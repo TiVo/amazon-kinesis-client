@@ -69,6 +69,7 @@ public class Worker implements Runnable {
     private final IMetricsFactory metricsFactory;
     // Backoff time when running tasks if they encounter exceptions
     private final long taskBackoffTimeMillis;
+    private final long stolenShardDelayMillis;
 
     // private final KinesisClientLeaseManager leaseManager;
     private final KinesisClientLibLeaseCoordinator leaseCoordinator;
@@ -251,7 +252,7 @@ public class Worker implements Runnable {
         this(config.getApplicationName(), recordProcessorFactory, streamConfig, config.getInitialPositionInStream(),
                 config.getParentShardPollIntervalMillis(), config.getShardSyncIntervalMillis(),
                 config.shouldCleanupLeasesUponShardCompletion(), leaseCoordinator, leaseCoordinator, execService,
-                metricsFactory, config.getTaskBackoffTimeMillis());
+                metricsFactory, config.getTaskBackoffTimeMillis(), config.getLeaseTheftDelayMillis());
     }
 
     /**
@@ -271,6 +272,7 @@ public class Worker implements Runnable {
      *        consumption)
      * @param metricsFactory Metrics factory used to emit metrics
      * @param taskBackoffTimeMillis Backoff period when tasks encounter an exception
+     * @param stolenShardDelayMillis The amount of time to wait before processing new events from stolen shards
      */
     // NOTE: This has package level access solely for testing
     // CHECKSTYLE:IGNORE ParameterNumber FOR NEXT 10 LINES
@@ -285,7 +287,8 @@ public class Worker implements Runnable {
             KinesisClientLibLeaseCoordinator leaseCoordinator,
             ExecutorService execService,
             IMetricsFactory metricsFactory,
-            long taskBackoffTimeMillis) {
+            long taskBackoffTimeMillis,
+            long stolenShardDelayMillis) {
         this.applicationName = applicationName;
         this.recordProcessorFactory = recordProcessorFactory;
         this.streamConfig = streamConfig;
@@ -306,6 +309,7 @@ public class Worker implements Runnable {
                         metricsFactory,
                         executorService);
         this.taskBackoffTimeMillis = taskBackoffTimeMillis;
+        this.stolenShardDelayMillis = stolenShardDelayMillis;
     }
 
     /**
@@ -502,7 +506,9 @@ public class Worker implements Runnable {
                                 cleanupLeasesUponShardCompletion,
                                 executorService,
                                 metricsFactory,
-                                taskBackoffTimeMillis);
+                                taskBackoffTimeMillis,
+                                stolenShardDelayMillis
+                                );
                 shardInfoShardConsumerMap.put(shardInfo, consumer);
                 wlog.infoForce("Created new shardConsumer for : " + shardInfo);
             }

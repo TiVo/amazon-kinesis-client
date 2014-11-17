@@ -22,8 +22,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.amazonaws.services.kinesis.clientlibrary.exceptions.internal.BlockedOnParentShardException;
+import com.amazonaws.services.kinesis.clientlibrary.exceptions.internal.NotCaughtUpException;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.ICheckpoint;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessor;
+import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessor2;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 import com.amazonaws.services.kinesis.leases.impl.KinesisClientLease;
 import com.amazonaws.services.kinesis.leases.interfaces.ILeaseManager;
@@ -40,7 +42,13 @@ class ShardConsumer {
      * Enumerates processing states when working on a shard.
      */
     enum ShardConsumerState {
-        WAITING_ON_PARENT_SHARDS, INITIALIZING, PROCESSING, SHUTTING_DOWN, SHUTDOWN_COMPLETE;
+        WAITING_ON_PARENT_SHARDS,
+        WAITING_ON_STOLEN_SHARDS,
+        INITIALIZING,
+        CATCHING_UP,
+        PROCESSING,
+        SHUTTING_DOWN,
+        SHUTDOWN_COMPLETE,
     }
 
     private static final Log LOG = LogFactory.getLog(ShardConsumer.class);
@@ -58,6 +66,7 @@ class ShardConsumer {
     private final long parentShardPollIntervalMillis;
     private final boolean cleanupLeasesOfCompletedShards;
     private final long taskBackoffTimeMillis;
+    private final long stolenShardDelayMillis;
 
     private ITask currentTask;
     private long currentTaskSubmitTime;
@@ -85,6 +94,7 @@ class ShardConsumer {
      * @param executorService ExecutorService used to execute process tasks for this shard
      * @param metricsFactory IMetricsFactory used to construct IMetricsScopes for this shard
      * @param backoffTimeMillis backoff interval when we encounter exceptions
+     * @param stolenShardDelayMillis delay before processing new records from stolen shards
      */
     // CHECKSTYLE:IGNORE ParameterNumber FOR NEXT 10 LINES
     ShardConsumer(ShardInfo shardInfo,
@@ -96,7 +106,8 @@ class ShardConsumer {
             boolean cleanupLeasesOfCompletedShards,
             ExecutorService executorService,
             IMetricsFactory metricsFactory,
-            long backoffTimeMillis) {
+            long backoffTimeMillis,
+            long stolenShardDelayMillis) {
         this.streamConfig = streamConfig;
         this.recordProcessor = recordProcessor;
         this.executorService = executorService;
@@ -115,6 +126,7 @@ class ShardConsumer {
         this.parentShardPollIntervalMillis = parentShardPollIntervalMillis;
         this.cleanupLeasesOfCompletedShards = cleanupLeasesOfCompletedShards;
         this.taskBackoffTimeMillis = backoffTimeMillis;
+        this.stolenShardDelayMillis = stolenShardDelayMillis;
     }
 
     /**
@@ -148,6 +160,10 @@ class ShardConsumer {
                                 // No need to log the stack trace for this exception (it is very specific).
                                 LOG.debug("Shard " + shardInfo.getShardId()
                                         + " is blocked on completion of parent shard.");
+                            } if (taskException instanceof NotCaughtUpException) {
+                                // No need to log the stack trace for this exception (it is very specific).
+                                LOG.debug("Shard " + shardInfo.getShardId()
+                                        + " is not caught up from backing store.");
                             } else {
                                 LOG.debug("Caught exception running " + currentTask.getTaskType() + " task: ",
                                         result.getException());
@@ -242,6 +258,9 @@ class ShardConsumer {
             case WAITING_ON_PARENT_SHARDS:
                 nextTask = new BlockOnParentShardTask(shardInfo, leaseManager, parentShardPollIntervalMillis);
                 break;
+            case WAITING_ON_STOLEN_SHARDS:
+                nextTask = new BlockOnStolenShardTask(stolenShardDelayMillis);
+                break;
             case INITIALIZING:
                 nextTask =
                         new InitializeTask(shardInfo,
@@ -249,6 +268,13 @@ class ShardConsumer {
                                 checkpoint,
                                 recordProcessorCheckpointer,
                                 dataFetcher,
+                                taskBackoffTimeMillis);
+                break;
+            case CATCHING_UP:
+                nextTask =
+                        new CatchupTask(shardInfo,
+                                (IRecordProcessor2)recordProcessor,
+                                recordProcessorCheckpointer,
                                 taskBackoffTimeMillis);
                 break;
             case PROCESSING:
@@ -298,6 +324,8 @@ class ShardConsumer {
                 if (taskCompletedSuccessfully && TaskType.BLOCK_ON_PARENT_SHARDS.equals(currentTask.getTaskType())) {
                     if (beginShutdown) {
                         currentState = ShardConsumerState.SHUTTING_DOWN;
+                    } else if (shardInfo.wasStolen()) {
+                        currentState = ShardConsumerState.WAITING_ON_STOLEN_SHARDS;
                     } else {
                         currentState = ShardConsumerState.INITIALIZING;
                     }
@@ -305,10 +333,22 @@ class ShardConsumer {
                     currentState = ShardConsumerState.SHUTDOWN_COMPLETE;
                 }
                 break;
+            case WAITING_ON_STOLEN_SHARDS:
+                if (taskCompletedSuccessfully && TaskType.BLOCK_ON_STOLEN_SHARD.equals(currentTask.getTaskType())) {
+                    if (beginShutdown) {
+                        currentState = ShardConsumerState.SHUTTING_DOWN;
+                    } else {
+                        currentState = ShardConsumerState.INITIALIZING;
+                    }
+                } else if ((currentState == null) && beginShutdown) {
+                    currentState = ShardConsumerState.SHUTDOWN_COMPLETE;
+                }
             case INITIALIZING:
                 if (taskCompletedSuccessfully && TaskType.INITIALIZE.equals(currentTask.getTaskType())) {
                     if (beginShutdown) {
                         currentState = ShardConsumerState.SHUTTING_DOWN;
+                    } else if (recordProcessor instanceof IRecordProcessor2) {
+                        currentState = ShardConsumerState.CATCHING_UP;
                     } else {
                         currentState = ShardConsumerState.PROCESSING;
                     }
@@ -316,6 +356,15 @@ class ShardConsumer {
                     currentState = ShardConsumerState.SHUTDOWN_COMPLETE;
                 }
                 break;
+
+            case CATCHING_UP:
+                if (taskCompletedSuccessfully && TaskType.CATCHUP.equals(currentTask.getTaskType())) {
+                    if (beginShutdown) {
+                        currentState = ShardConsumerState.SHUTTING_DOWN;
+                    } else {
+                        currentState = ShardConsumerState.PROCESSING;
+                    }
+                }
             case PROCESSING:
                 if (taskCompletedSuccessfully && TaskType.PROCESS.equals(currentTask.getTaskType())) {
                     if (beginShutdown) {

@@ -57,14 +57,15 @@ public class KinesisClientLeaseManager extends LeaseManager<KinesisClientLease> 
      * {@inheritDoc}
      */
     @Override
-    public boolean takeLease(KinesisClientLease lease, String newOwner)
+    public boolean takeLease(KinesisClientLease lease, String newOwner, boolean isExpired)
         throws DependencyException, InvalidStateException, ProvisionedThroughputException {
         String oldOwner = lease.getLeaseOwner();
 
-        boolean result = super.takeLease(lease, newOwner);
+        boolean result = super.takeLease(lease, newOwner, isExpired);
 
         if (oldOwner != null && !oldOwner.equals(newOwner)) {
             lease.setOwnerSwitchesSinceCheckpoint(lease.getOwnerSwitchesSinceCheckpoint() + 1);
+            lease.markStolen(!isExpired);
         }
 
         return result;

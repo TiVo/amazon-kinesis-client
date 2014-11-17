@@ -156,7 +156,8 @@ class KinesisClientLibLeaseCoordinator extends LeaseCoordinator<KinesisClientLea
                         new ShardInfo(
                                 lease.getLeaseKey(), 
                                 lease.getConcurrencyToken().toString(), 
-                                parentShardIds);
+                                parentShardIds,
+                                lease.wasStolen());
                 assignments.add(assignment);
             }
         }

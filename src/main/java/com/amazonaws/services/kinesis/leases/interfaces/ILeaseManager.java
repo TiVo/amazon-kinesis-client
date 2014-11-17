@@ -120,6 +120,7 @@ public interface ILeaseManager<T extends Lease> {
      * 
      * @param lease the lease to take
      * @param owner the new owner
+     * @param isExpired is the lease currently expired
      * 
      * @return true if lease was successfully taken, false otherwise
      * 
@@ -127,7 +128,7 @@ public interface ILeaseManager<T extends Lease> {
      * @throws ProvisionedThroughputException if DynamoDB update fails due to lack of capacity
      * @throws DependencyException if DynamoDB update fails in an unexpected way
      */
-    public boolean takeLease(T lease, String owner)
+    public boolean takeLease(T lease, String owner, boolean isExpired)
         throws DependencyException, InvalidStateException, ProvisionedThroughputException;
 
     /**
