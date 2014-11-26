@@ -11,9 +11,11 @@ public class BlockOnStolenShardTask implements ITask {
 
     private static final Log LOG = LogFactory.getLog(BlockOnStolenShardTask.class);
     private final TaskType taskType = TaskType.BLOCK_ON_STOLEN_SHARD;
+    private final ShardInfo shardInfo;
     private final long stolenShardDelayMillis;
 
-    public BlockOnStolenShardTask(long stolenShardDelayMillis) {
+    public BlockOnStolenShardTask(ShardInfo shardInfo, long stolenShardDelayMillis) {
+        this.shardInfo = shardInfo;
         this.stolenShardDelayMillis = stolenShardDelayMillis;
     }
 
@@ -21,6 +23,8 @@ public class BlockOnStolenShardTask implements ITask {
     public TaskResult call() {
         Exception exception = null;
 
+        LOG.info("Sleeping for " + (stolenShardDelayMillis / 1000) + " seconds before processing stolen shard: "
+                + shardInfo.getShardId());
         try {
             Thread.sleep(stolenShardDelayMillis);
         } catch (InterruptedException e) {

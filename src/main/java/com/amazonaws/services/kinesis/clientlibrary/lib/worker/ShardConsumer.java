@@ -228,6 +228,7 @@ class ShardConsumer {
         if ((shutdownReason == null) || (shutdownReason == ShutdownReason.TERMINATE)) {
             shutdownReason = reason;
         }
+        LOG.info("Marking shard " + shardInfo.getShardId() + " for shutdown, reason: " + shutdownReason);
     }
 
     /**
@@ -259,7 +260,7 @@ class ShardConsumer {
                 nextTask = new BlockOnParentShardTask(shardInfo, leaseManager, parentShardPollIntervalMillis);
                 break;
             case WAITING_ON_STOLEN_SHARDS:
-                nextTask = new BlockOnStolenShardTask(stolenShardDelayMillis);
+                nextTask = new BlockOnStolenShardTask(shardInfo, stolenShardDelayMillis);
                 break;
             case INITIALIZING:
                 nextTask =
@@ -331,6 +332,8 @@ class ShardConsumer {
                     }
                 } else if ((currentTask == null) && beginShutdown) {
                     currentState = ShardConsumerState.SHUTDOWN_COMPLETE;
+                } else if (beginShutdown) {
+                    currentState = ShardConsumerState.SHUTTING_DOWN;
                 }
                 break;
             case WAITING_ON_STOLEN_SHARDS:
@@ -340,9 +343,12 @@ class ShardConsumer {
                     } else {
                         currentState = ShardConsumerState.INITIALIZING;
                     }
-                } else if ((currentState == null) && beginShutdown) {
+                } else if ((currentTask == null) && beginShutdown) {
                     currentState = ShardConsumerState.SHUTDOWN_COMPLETE;
+                } else if (beginShutdown) {
+                    currentState = ShardConsumerState.SHUTTING_DOWN;
                 }
+                break;
             case INITIALIZING:
                 if (taskCompletedSuccessfully && TaskType.INITIALIZE.equals(currentTask.getTaskType())) {
                     if (beginShutdown) {
@@ -354,9 +360,10 @@ class ShardConsumer {
                     }
                 } else if ((currentTask == null) && beginShutdown) {
                     currentState = ShardConsumerState.SHUTDOWN_COMPLETE;
+                } else if (beginShutdown) {
+                    currentState = ShardConsumerState.SHUTTING_DOWN;
                 }
                 break;
-
             case CATCHING_UP:
                 if (taskCompletedSuccessfully && TaskType.CATCHUP.equals(currentTask.getTaskType())) {
                     if (beginShutdown) {
@@ -364,7 +371,10 @@ class ShardConsumer {
                     } else {
                         currentState = ShardConsumerState.PROCESSING;
                     }
+                } else if (beginShutdown) {
+                    currentState = ShardConsumerState.SHUTTING_DOWN;
                 }
+                break;
             case PROCESSING:
                 if (taskCompletedSuccessfully && TaskType.PROCESS.equals(currentTask.getTaskType())) {
                     if (beginShutdown) {
@@ -372,6 +382,8 @@ class ShardConsumer {
                     } else {
                         currentState = ShardConsumerState.PROCESSING;
                     }
+                } else if (beginShutdown) {
+                    currentState = ShardConsumerState.SHUTTING_DOWN;
                 }
                 break;
             case SHUTTING_DOWN:
