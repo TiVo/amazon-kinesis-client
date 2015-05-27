@@ -140,7 +140,17 @@ class ProcessTask implements ITask {
                             + records);
                 }
             }
-        } catch (RuntimeException | KinesisClientLibException e) {
+        } catch (RuntimeException e) {
+            LOG.error("ShardId " + shardInfo.getShardId() + ": Caught exception: ", e);
+            exception = e;
+
+            // backoff if we encounter an exception.
+            try {
+                Thread.sleep(this.backoffTimeMillis);
+            } catch (InterruptedException ie) {
+                LOG.debug(shardInfo.getShardId() + ": Sleep was interrupted", ie);
+            }
+        } catch (KinesisClientLibException e) {
             LOG.error("ShardId " + shardInfo.getShardId() + ": Caught exception: ", e);
             exception = e;
 

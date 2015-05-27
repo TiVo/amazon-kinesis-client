@@ -230,7 +230,9 @@ public class MultiLangRecordProcessor implements IRecordProcessor {
     private void safelyWaitOnFuture(Future<?> future, String whatThisFutureIsDoing) {
         try {
             future.get();
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException e) {
+            LOG.error("Encountered error while " + whatThisFutureIsDoing + " for shard " + shardId, e);
+        } catch (ExecutionException e) {
             LOG.error("Encountered error while " + whatThisFutureIsDoing + " for shard " + shardId, e);
         }
     }

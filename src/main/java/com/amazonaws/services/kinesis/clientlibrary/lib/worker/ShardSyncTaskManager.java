@@ -89,7 +89,9 @@ class ShardSyncTaskManager {
                         LOG.error("Caught exception running " + currentTask.getTaskType() + " task: ",
                                 result.getException());
                     }
-                } catch (InterruptedException | ExecutionException e) {
+                } catch (InterruptedException e) {
+                    LOG.warn(currentTask.getTaskType() + " task encountered exception.", e);
+                } catch (ExecutionException e) {
                     LOG.warn(currentTask.getTaskType() + " task encountered exception.", e);
                 }
             }

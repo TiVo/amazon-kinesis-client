@@ -14,8 +14,8 @@
  */
 package com.amazonaws.services.kinesis.metrics.impl;
 
-import java.util.Objects;
 import com.amazonaws.services.cloudwatch.model.MetricDatum;
+import com.google.common.base.Objects;
 
 /**
  * This class is used to store a MetricDatum as well as KeyType which stores specific information about
@@ -50,7 +50,7 @@ public class MetricDatumWithKey<KeyType> {
 
     @Override
     public int hashCode() {
-        return Objects.hash(key, datum);
+        return Objects.hashCode(key, datum);
     }
 
     @Override
@@ -62,7 +62,7 @@ public class MetricDatumWithKey<KeyType> {
         if (getClass() != obj.getClass())
             return false;
         MetricDatumWithKey<?> other = (MetricDatumWithKey<?>) obj;
-        return Objects.equals(other.key, key) && Objects.equals(other.datum, datum);
+        return Objects.equal(other.key, key) && Objects.equal(other.datum, datum);
     }
 
 }

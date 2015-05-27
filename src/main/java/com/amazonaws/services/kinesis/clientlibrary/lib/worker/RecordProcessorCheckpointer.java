@@ -180,8 +180,13 @@ class RecordProcessorCheckpointer implements IRecordProcessorCheckpointer {
                 }
                 checkpoint.setCheckpoint(shardInfo.getShardId(), checkpointValue, shardInfo.getConcurrencyToken());
                 lastCheckpointValue = checkpointValue;
-            } catch (ThrottlingException | ShutdownException | InvalidStateException
-                    | KinesisClientLibDependencyException e) {
+            } catch (ThrottlingException e) {
+                throw e;
+            } catch (ShutdownException e) {
+                throw e;
+            } catch (InvalidStateException e) {
+                throw e;
+            } catch (KinesisClientLibDependencyException e) {
                 throw e;
             } catch (KinesisClientLibException e) {
                 LOG.warn("Caught exception setting checkpoint.", e);

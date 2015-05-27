@@ -15,10 +15,10 @@
 package com.amazonaws.services.kinesis.metrics.impl;
 
 import java.util.List;
-import java.util.Objects;
 
 import com.amazonaws.services.cloudwatch.model.Dimension;
 import com.amazonaws.services.cloudwatch.model.MetricDatum;
+import com.google.common.base.Objects;
 
 /*
  * A representation of a key of a MetricDatum. This class is useful when wanting to compare 
@@ -41,7 +41,7 @@ public class CWMetricKey {
 
     @Override
     public int hashCode() {
-        return Objects.hash(dimensions, metricName);
+        return Objects.hashCode(dimensions, metricName);
     }
 
     @Override
@@ -53,7 +53,7 @@ public class CWMetricKey {
         if (getClass() != obj.getClass())
             return false;
         CWMetricKey other = (CWMetricKey) obj;
-        return Objects.equals(other.dimensions, dimensions) && Objects.equals(other.metricName, metricName);
+        return Objects.equal(other.dimensions, dimensions) && Objects.equal(other.metricName, metricName);
     }
 
 }

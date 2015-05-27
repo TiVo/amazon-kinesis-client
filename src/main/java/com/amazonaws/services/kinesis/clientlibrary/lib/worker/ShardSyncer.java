@@ -130,7 +130,7 @@ class ShardSyncer {
             }
         }
         
-        List<KinesisClientLease> trackedLeases = new ArrayList<>();
+        List<KinesisClientLease> trackedLeases = new ArrayList<KinesisClientLease>();
         if (currentLeases != null) {
             trackedLeases.addAll(currentLeases);            
         }
@@ -170,7 +170,7 @@ class ShardSyncer {
      * @return
      */
     static Map<String, KinesisClientLease> constructShardIdToKCLLeaseMap(List<KinesisClientLease> trackedLeaseList) {
-        Map<String, KinesisClientLease> trackedLeasesMap = new HashMap<>();
+        Map<String, KinesisClientLease> trackedLeasesMap = new HashMap<String, KinesisClientLease>();
         for (KinesisClientLease lease : trackedLeaseList) {
             trackedLeasesMap.put(lease.getLeaseKey(), lease);
         }
@@ -256,7 +256,7 @@ class ShardSyncer {
      */
     static Map<String, Set<String>> constructShardIdToChildShardIdsMap(
             Map<String, Shard> shardIdToShardMap) {
-        Map<String, Set<String>> shardIdToChildShardIdsMap = new HashMap<>();
+        Map<String, Set<String>> shardIdToChildShardIdsMap = new HashMap<String, Set<String>>();
         for (Map.Entry<String, Shard> entry : shardIdToShardMap.entrySet()) {
             String shardId = entry.getKey();
             Shard shard = entry.getValue();
@@ -345,7 +345,7 @@ class ShardSyncer {
         }
 
         List<Shard> openShards = getOpenShards(shards);
-        Map<String, Boolean> memoizationContext = new HashMap<>();
+        Map<String, Boolean> memoizationContext = new HashMap<String, Boolean>();
 
         // Iterate over the open shards and find those that don't have any lease entries.
         for (Shard shard : openShards) {
@@ -511,13 +511,13 @@ class ShardSyncer {
             IKinesisProxy kinesisProxy,
             ILeaseManager<KinesisClientLease> leaseManager)
         throws KinesisClientLibIOException, DependencyException, InvalidStateException, ProvisionedThroughputException {
-        Set<String> kinesisShards = new HashSet<>();
+        Set<String> kinesisShards = new HashSet<String>();
         for (Shard shard : shards) {
             kinesisShards.add(shard.getShardId());
         }
         
         // Check if there are leases for non-existent shards
-        List<KinesisClientLease> garbageLeases = new ArrayList<>();
+        List<KinesisClientLease> garbageLeases = new ArrayList<KinesisClientLease>();
         for (KinesisClientLease lease : trackedLeases) {
             if (isCandidateForCleanup(lease, kinesisShards)) {
                 garbageLeases.add(lease);
@@ -529,7 +529,7 @@ class ShardSyncer {
                     + " candidate leases for cleanup. Refreshing list of" 
                     + " Kinesis shards to pick up recent/latest shards");
             List<Shard> currentShardList = getShardList(kinesisProxy);
-            Set<String> currentKinesisShardIds = new HashSet<>();
+            Set<String> currentKinesisShardIds = new HashSet<String>();
             for (Shard shard : currentShardList) {
                 currentKinesisShardIds.add(shard.getShardId());
             }
@@ -604,8 +604,8 @@ class ShardSyncer {
             List<KinesisClientLease> trackedLeases,
             ILeaseManager<KinesisClientLease> leaseManager)
         throws DependencyException, InvalidStateException, ProvisionedThroughputException, KinesisClientLibIOException {
-        Set<String> shardIdsOfClosedShards = new HashSet<>();
-        List<KinesisClientLease> leasesOfClosedShards = new ArrayList<>();
+        Set<String> shardIdsOfClosedShards = new HashSet<String>();
+        List<KinesisClientLease> leasesOfClosedShards = new ArrayList<KinesisClientLease>();
         for (KinesisClientLease lease : currentLeases) {
             if (lease.getCheckpoint().equals(SentinelCheckpoint.SHARD_END.toString())) {
                 shardIdsOfClosedShards.add(lease.getLeaseKey());
@@ -652,7 +652,7 @@ class ShardSyncer {
             ILeaseManager<KinesisClientLease> leaseManager)
         throws DependencyException, InvalidStateException, ProvisionedThroughputException {
         KinesisClientLease leaseForClosedShard = trackedLeases.get(closedShardId);
-        List<KinesisClientLease> childShardLeases = new ArrayList<>();
+        List<KinesisClientLease> childShardLeases = new ArrayList<KinesisClientLease>();
         
         for (String childShardId : childShardIds) {
             KinesisClientLease childLease = trackedLeases.get(childShardId);

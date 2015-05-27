@@ -185,7 +185,21 @@ public class KinesisClientLibConfigurator {
                                     propertyKey,
                                     propertyValue));
                             return;
-                        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+                        } catch (IllegalAccessException e) {
+                            // At this point, we really thought that we could call this method.
+                            LOG.warn(String.format("Encountered an error while invoking method %s with value %s. "
+                                    + "Exception was %s",
+                                    method,
+                                    propertyValue,
+                                    e));
+                        } catch (IllegalArgumentException e) {
+                            // At this point, we really thought that we could call this method.
+                            LOG.warn(String.format("Encountered an error while invoking method %s with value %s. "
+                                    + "Exception was %s",
+                                    method,
+                                    propertyValue,
+                                    e));
+                        } catch (InvocationTargetException e) {
                             // At this point, we really thought that we could call this method.
                             LOG.warn(String.format("Encountered an error while invoking method %s with value %s. "
                                     + "Exception was %s",

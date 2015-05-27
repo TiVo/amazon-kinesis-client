@@ -131,9 +131,13 @@ public class MultiLangDaemonConfig {
 
     private static Properties loadProperties(ClassLoader classLoader, String propertiesFileName) throws IOException {
         Properties properties = new Properties();
-        try (InputStream propertiesStream = classLoader.getResourceAsStream(propertiesFileName)) {
+        InputStream propertiesStream = null;
+        try {
+            propertiesStream = classLoader.getResourceAsStream(propertiesFileName);
             properties.load(propertiesStream);
             return properties;
+        } finally {
+            propertiesStream.close();
         }
     }
 

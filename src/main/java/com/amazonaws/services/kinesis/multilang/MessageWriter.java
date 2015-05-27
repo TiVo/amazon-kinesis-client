@@ -76,7 +76,7 @@ class MessageWriter {
                      */
                     synchronized (writer) {
                         writer.write(message, 0, message.length());
-                        writer.write(System.lineSeparator(), 0, System.lineSeparator().length());
+                        writer.write(System.getProperty("line.separator"), 0, System.getProperty("line.separator").length());
                         writer.flush();
                     }
                     LOG.info("Message size == " + message.getBytes().length + " bytes for shard " + shardId);

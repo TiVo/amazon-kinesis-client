@@ -141,7 +141,9 @@ public class MultiLangDaemon implements Callable<Integer> {
         Future<Integer> future = executorService.submit(daemon);
         try {
             System.exit(future.get());
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException e) {
+            LOG.error("Encountered an error while running daemon", e);
+        } catch (ExecutionException e) {
             LOG.error("Encountered an error while running daemon", e);
         }
         System.exit(1);
