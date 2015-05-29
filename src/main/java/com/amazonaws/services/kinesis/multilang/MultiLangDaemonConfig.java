@@ -137,7 +137,9 @@ public class MultiLangDaemonConfig {
             properties.load(propertiesStream);
             return properties;
         } finally {
-            propertiesStream.close();
+            if (propertiesStream != null) {
+                propertiesStream.close();
+            }
         }
     }
 
